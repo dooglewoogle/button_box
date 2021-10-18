@@ -23,12 +23,20 @@ struct EncoderHelper {
 };
 
 static int numEncoders = 3;
-EncoderHelper enc1 = {RotaryEncoder(15, 14, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 0, 0, 180};
-EncoderHelper enc2 = {RotaryEncoder(5, 6, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 0, 90, 270};
-EncoderHelper enc3 = {RotaryEncoder(7, 8, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 1, 0, 180};
+EncoderHelper enc1 = {RotaryEncoder(4, 5, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 0, 0, 180};
+EncoderHelper enc2 = {RotaryEncoder(6, 7, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 0, 90, 270};
+EncoderHelper enc3 = {RotaryEncoder(8, 9, RotaryEncoder::LatchMode::FOUR3), 0, 0, 0, false, 1, 0, 180};
 EncoderHelper encoders[3] = {enc1, enc2, enc3};
 
 unsigned int updateMillis;
+
+//state holders we need
+bool quantumIsOn;
+unsigned int quantumStateChangeTimeout;
+#define quantumLedPin 102
+
+
+
 
 bool buttonsHaveChanged(){
   for (uint8_t i=0; i<btnCount/8; i++){
@@ -46,6 +54,8 @@ void setup() {
   Joystick.begin(false);
   Serial.begin(115200);
   Serial.println("Ready");
+
+  pinMode(4, OUTPUT);
 }
 
 void loop() {
@@ -84,7 +94,7 @@ void loop() {
 
 
   // rate limited button/switch read
-  if (cMillis - updateMillis >= 50 || true) {
+  if (cMillis - updateMillis >= 50) {
     updateMillis = cMillis;
 
 
@@ -102,12 +112,32 @@ void loop() {
       }
     }
 
-    //Only send if something has changed
+
+
+
+    ///////
+    // special cases
+
+    //if the quantum btn is pushed, toggle led
+    if (bitRead(Joystick.oldButtonValues[1], 2) != bitRead(Joystick.buttonValues[1], 2) && millis() > quantumStateChangeTimeout){
+      if (quantumIsOn){
+        digitalWrite(quantumLedPin, LOW);
+        } else {
+          digitalWrite(quantumLedPin, HIGH);
+        }
+        quantumStateChangeTimeout = millis() + 100;
+        quantumIsOn = !quantumIsOn;
+    }
+
+
+
+    
+    //
+    //Now everyting is read and special cases dealt with, send if something has changed
     if (buttonsHaveChanged()){
       memcpy(Joystick.oldButtonValues, Joystick.buttonValues, btnCount/8);
       Joystick.sendState();
     }
-
 
     
   }
